@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDashboardData } from './hooks/useDashboardData'
+import { Wordmark } from './components/Wordmark'
 import GeneralTab from './tabs/GeneralTab'
 import ClassTab from './tabs/ClassTab'
 import './index.css'
@@ -43,21 +44,28 @@ export default function App() {
           height: 56,
         }}>
           {/* Brand */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <span style={{
-              fontFamily: "'Instrument Serif', serif",
-              fontStyle: 'italic',
-              fontSize: 20,
-              color: 'var(--gold)',
-            }}>másvida</span>
-            <span style={{
-              fontFamily: "'Manrope', sans-serif",
-              fontWeight: 800,
-              fontSize: 11,
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              color: 'var(--text-light)',
-            }}>Dashboard</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Wordmark size={28} />
+            <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
+            <div>
+              <p style={{
+                fontFamily: "'Manrope', sans-serif",
+                fontWeight: 800,
+                fontSize: 10,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: 'var(--text-light)',
+                lineHeight: 1,
+              }}>Dashboard</p>
+              <p style={{
+                fontFamily: "'Instrument Serif', serif",
+                fontStyle: 'italic',
+                fontSize: 11,
+                color: 'var(--text-light)',
+                marginTop: 2,
+                lineHeight: 1,
+              }}>by Guillermo Velazquez</p>
+            </div>
           </div>
 
           {/* Season selector */}
