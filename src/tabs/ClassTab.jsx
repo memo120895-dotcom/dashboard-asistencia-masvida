@@ -5,6 +5,7 @@ import CircleBarChart from '../components/CircleBarChart'
 import AttendanceDonut from '../components/AttendanceDonut'
 import LeadersTable from '../components/LeadersTable'
 import AtRiskList from '../components/AtRiskList'
+import CircleRoster from '../components/CircleRoster'
 
 export default function ClassTab({ classData, circles }) {
   if (!classData) return (
@@ -13,7 +14,7 @@ export default function ClassTab({ classData, circles }) {
     </p>
   )
 
-  const { kpis, trendByDate, byCircle, donut, missingAlerts, atRisk, leadersTable } = classData
+  const { kpis, trendByDate, byCircle, donut, missingAlerts, atRisk, leadersTable, rosterByCircle } = classData
 
   return (
     <div>
@@ -41,6 +42,9 @@ export default function ClassTab({ classData, circles }) {
 
       {/* At-risk students */}
       <AtRiskList students={atRisk} circles={circles} />
+
+      {/* Attendance roster by circle */}
+      <CircleRoster roster={rosterByCircle} />
     </div>
   )
 }

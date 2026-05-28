@@ -75,6 +75,39 @@ function computeAtRisk(attendanceRows, students, classCircleIds) {
     }))
 }
 
+function computeRosterByCircle(attendanceRows, circles, students, classCircleIds) {
+  return circles
+    .filter(c => classCircleIds.includes(c.id))
+    .map(c => {
+      const circleStudents = students.filter(s => s.circle_id === c.id)
+
+      const circleDates = [...new Set(
+        attendanceRows
+          .filter(r => r.circle_id === c.id)
+          .map(r => toDateStr(r.session_date))
+      )].sort((a, b) => b.localeCompare(a))
+
+      const lastDate = circleDates[0] || null
+      const presentRows = lastDate
+        ? attendanceRows.filter(r => r.circle_id === c.id && toDateStr(r.session_date) === lastDate)
+        : []
+
+      const presentIds = new Set(presentRows.map(r => r.student_id))
+      const takenBy = presentRows[0]?.taken_by || null
+
+      return {
+        id: c.id,
+        circle: c.name,
+        leader: c.leader_name,
+        enrolled: circleStudents.length,
+        lastDate,
+        takenBy,
+        present: circleStudents.filter(s => presentIds.has(s.id)),
+        absent: circleStudents.filter(s => !presentIds.has(s.id)),
+      }
+    })
+}
+
 function aggregateForScope(attendanceRows, circles, students, circleIds) {
   const circleSet = new Set(circleIds)
   const scopeAttendance = attendanceRows.filter(r => circleSet.has(r.circle_id))
@@ -231,6 +264,7 @@ export function useDashboardData() {
           missingAlerts,
           atRisk: atRiskEnriched,
           leadersTable: classAgg.byCircle,
+          rosterByCircle: computeRosterByCircle(attendance, circles, students, classCircleIds),
         }
       })
 
