@@ -8,6 +8,12 @@ import './index.css'
 const CLASS_LABELS = {
   'sanidad-emocional': 'Sanidad Emocional',
   'sanidad-relaciones': 'Sanidad en Relaciones',
+  'SR-MI': 'SR · Miércoles',
+  'SR-DO': 'SR · Domingo',
+  'SE-DOM': 'SE · Domingo',
+  'se-dom': 'SE · Domingo',
+  'sr-mi': 'SR · Miércoles',
+  'sr-do': 'SR · Domingo',
 }
 
 function classLabel(id) { return CLASS_LABELS[id] || id }
