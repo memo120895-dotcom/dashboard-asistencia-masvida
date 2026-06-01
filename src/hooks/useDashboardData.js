@@ -175,13 +175,14 @@ function aggregateForScope(attendanceRows, circles, students, circleIds) {
 }
 
 export function useDashboardData() {
-  const [seasons, setSeasons] = useState([])
-  const [selectedSeasonId, setSelectedSeasonId] = useState(null)
+  const [allSeasons, setAllSeasons] = useState([])
+  const [periods, setPeriods] = useState([])       // [{key, year, month, active, seasons:[]}]
+  const [selectedPeriod, setSelectedPeriod] = useState(null)  // e.g. "2026-4"
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Load seasons on mount
+  // Load seasons on mount, group into periods (month+year)
   useEffect(() => {
     supabase
       .from('seasons')
@@ -189,30 +190,49 @@ export function useDashboardData() {
       .order('year', { ascending: false })
       .then(({ data: rows, error: err }) => {
         if (err) { setError(err.message); return }
-        setSeasons(rows || [])
-        const active = rows?.find(s => s.active)
-        setSelectedSeasonId(active?.id || rows?.[0]?.id || null)
+        const seasons = rows || []
+        setAllSeasons(seasons)
+
+        // Group seasons by month+year
+        const periodMap = {}
+        seasons.forEach(s => {
+          const key = `${s.year}-${s.month}`
+          if (!periodMap[key]) periodMap[key] = { key, year: s.year, month: s.month, seasons: [], active: false }
+          periodMap[key].seasons.push(s)
+          if (s.active) periodMap[key].active = true
+        })
+        const periodList = Object.values(periodMap)
+          .sort((a, b) => b.year - a.year || b.month - a.month)
+        setPeriods(periodList)
+
+        const activePeriod = periodList.find(p => p.active) || periodList[0]
+        setSelectedPeriod(activePeriod?.key || null)
       })
   }, [])
 
-  // Load dashboard data when season changes
+  // Load dashboard data when selected period or seasons change
   useEffect(() => {
-    if (!selectedSeasonId) return
+    if (!selectedPeriod || allSeasons.length === 0) return
+
+    const periodSeasons = allSeasons.filter(s => `${s.year}-${s.month}` === selectedPeriod)
+    const seasonIds = periodSeasons.map(s => s.id)
+    if (seasonIds.length === 0) return
 
     setLoading(true)
     setError(null)
 
     async function fetchAll(silent = false) {
       if (!silent) setLoading(true)
-      // Circles for this season
+
+      // Circles for ALL seasons in this period
       const { data: circles, error: circErr } = await supabase
         .from('circles')
         .select('*')
-        .eq('season_id', selectedSeasonId)
+        .in('season_id', seasonIds)
 
       if (circErr) { setError(circErr.message); setLoading(false); return }
       if (!circles || circles.length === 0) {
-        setData({ kpis: {}, podium: [], trendByDate: [], byCircle: [], donut: {}, byClass: {}, seasons })
+        setData({ kpis: {}, podium: [], trendByDate: [], byCircle: [], donut: {}, byClass: {}, classIds: [] })
         setLoading(false)
         return
       }
@@ -227,22 +247,20 @@ export function useDashboardData() {
 
       if (studErr) { setError(studErr.message); setLoading(false); return }
 
-      // Attendance for this season
+      // Attendance for ALL seasons in this period
       const { data: attendance, error: attErr } = await supabase
         .from('attendance')
         .select('*')
-        .eq('season_id', selectedSeasonId)
+        .in('season_id', seasonIds)
 
       if (attErr) { setError(attErr.message); setLoading(false); return }
 
       // ── Global aggregation ──
       const globalAgg = aggregateForScope(attendance, circles, students, circleIds)
-
-      // ── Podium: top 3 leaders by % ──
       const podium = globalAgg.byCircle.slice(0, 3).map((c, i) => ({ ...c, rank: i + 1 }))
 
       // ── Per-class aggregation ──
-      const classIds = [...new Set(circles.map(c => c.class_id))]
+      const classIds = [...new Set(circles.map(c => c.class_id).filter(Boolean))]
       const byClass = {}
 
       classIds.forEach(classId => {
@@ -254,7 +272,6 @@ export function useDashboardData() {
         const missingAlerts = computeMissingAlerts(attendance, classCircleSet)
         const atRisk = computeAtRisk(attendance, students, classCircleSet)
 
-        // Enrich atRisk with class and leader info
         const atRiskEnriched = atRisk.map(s => {
           const circle = circles.find(c => c.id === s.circle_id)
           return { ...s, class_id: classId, leader: circle?.leader_name || '' }
@@ -269,24 +286,14 @@ export function useDashboardData() {
         }
       })
 
-      // ── Global KPIs with per-class breakdown ──
       const avgPctByClass = {}
-      classIds.forEach(cid => {
-        avgPctByClass[cid] = byClass[cid].kpis.avgPct
-      })
+      classIds.forEach(cid => { avgPctByClass[cid] = byClass[cid].kpis.avgPct })
 
       const studentsByClass = {}
-      classIds.forEach(cid => {
-        studentsByClass[cid] = byClass[cid].kpis.totalStudents
-      })
+      classIds.forEach(cid => { studentsByClass[cid] = byClass[cid].kpis.totalStudents })
 
       setData({
-        kpis: {
-          ...globalAgg.kpis,
-          avgPctByClass,
-          studentsByClass,
-          classIds,
-        },
+        kpis: { ...globalAgg.kpis, avgPctByClass, studentsByClass, classIds },
         podium,
         trendByDate: globalAgg.trendByDate,
         byCircle: globalAgg.byCircle,
@@ -301,7 +308,7 @@ export function useDashboardData() {
 
     const interval = setInterval(() => fetchAll(true), 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [selectedSeasonId])
+  }, [selectedPeriod, allSeasons])
 
-  return { data, loading, error, seasons, selectedSeasonId, setSelectedSeasonId }
+  return { data, loading, error, periods, selectedPeriod, setSelectedPeriod }
 }

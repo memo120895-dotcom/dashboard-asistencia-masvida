@@ -10,6 +10,8 @@ const CLASS_LABELS = {
   'sanidad-relaciones': 'Sanidad en Relaciones',
   'SR-MI': 'SR · Miércoles',
   'SR-DO': 'SR · Domingo',
+  'SE-DO': 'SE · Domingo',
+  'SE-MI': 'SE · Miércoles',
   'SE-DOM': 'SE · Domingo',
   'se-dom': 'SE · Domingo',
   'sr-mi': 'SR · Miércoles',
@@ -19,13 +21,13 @@ const CLASS_LABELS = {
 function classLabel(id) { return CLASS_LABELS[id] || id }
 
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-function seasonLabel(s) {
-  if (!s) return ''
-  return `${MONTHS_ES[s.month - 1] || ''} ${s.year}`
+function periodLabel(p) {
+  if (!p) return ''
+  return `${MONTHS_ES[p.month - 1] || ''} ${p.year}`
 }
 
 export default function App() {
-  const { data, loading, error, seasons, selectedSeasonId, setSelectedSeasonId } = useDashboardData()
+  const { data, loading, error, periods, selectedPeriod, setSelectedPeriod } = useDashboardData()
   const [activeTab, setActiveTab] = useState('general')
 
   const tabs = ['general', ...(data?.classIds || [])]
@@ -74,11 +76,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Season selector */}
-          {seasons.length > 0 && (
+          {/* Period selector */}
+          {periods.length > 0 && (
             <select
-              value={selectedSeasonId || ''}
-              onChange={e => { setSelectedSeasonId(e.target.value); setActiveTab('general') }}
+              value={selectedPeriod || ''}
+              onChange={e => { setSelectedPeriod(e.target.value); setActiveTab('general') }}
               style={{
                 background: 'var(--cream)',
                 border: '1px solid var(--border)',
@@ -91,9 +93,9 @@ export default function App() {
                 outline: 'none',
               }}
             >
-              {seasons.map(s => (
-                <option key={s.id} value={s.id}>
-                  {seasonLabel(s)}{s.active ? ' ·  activa' : ''}
+              {periods.map(p => (
+                <option key={p.key} value={p.key}>
+                  {periodLabel(p)}{p.active ? ' · activa' : ''}
                 </option>
               ))}
             </select>
