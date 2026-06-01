@@ -76,36 +76,36 @@ function computeAtRisk(attendanceRows, students, classCircleIds) {
 }
 
 function computeRosterByCircle(attendanceRows, circles, students, classCircleIds) {
-  return circles
+  const classCircleSet = new Set(classCircleIds)
+
+  const sessionDates = [...new Set(
+    attendanceRows
+      .filter(r => classCircleSet.has(r.circle_id))
+      .map(r => toDateStr(r.session_date))
+  )].sort((a, b) => a.localeCompare(b))
+
+  const circleList = circles
     .filter(c => classCircleIds.includes(c.id))
     .map(c => {
       const circleStudents = students.filter(s => s.circle_id === c.id)
-
-      const circleDates = [...new Set(
-        attendanceRows
-          .filter(r => r.circle_id === c.id)
-          .map(r => toDateStr(r.session_date))
-      )].sort((a, b) => b.localeCompare(a))
-
-      const lastDate = circleDates[0] || null
-      const presentRows = lastDate
-        ? attendanceRows.filter(r => r.circle_id === c.id && toDateStr(r.session_date) === lastDate)
-        : []
-
-      const presentIds = new Set(presentRows.map(r => r.student_id))
-      const takenBy = presentRows[0]?.taken_by || null
+      const circleAttRows = attendanceRows.filter(r => r.circle_id === c.id)
 
       return {
         id: c.id,
         circle: c.name,
         leader: c.leader_name,
-        enrolled: circleStudents.length,
-        lastDate,
-        takenBy,
-        present: circleStudents.filter(s => presentIds.has(s.id)),
-        absent: circleStudents.filter(s => !presentIds.has(s.id)),
+        students: circleStudents.map(s => ({
+          id: s.id,
+          name: s.name,
+          phone: s.phone,
+          sessions: Object.fromEntries(
+            sessionDates.map(d => [d, circleAttRows.some(r => r.student_id === s.id && toDateStr(r.session_date) === d)])
+          ),
+        })),
       }
     })
+
+  return { sessionDates, circles: circleList }
 }
 
 function aggregateForScope(attendanceRows, circles, students, circleIds) {
@@ -202,7 +202,8 @@ export function useDashboardData() {
     setLoading(true)
     setError(null)
 
-    async function fetchAll() {
+    async function fetchAll(silent = false) {
+      if (!silent) setLoading(true)
       // Circles for this season
       const { data: circles, error: circErr } = await supabase
         .from('circles')
@@ -297,6 +298,9 @@ export function useDashboardData() {
     }
 
     fetchAll()
+
+    const interval = setInterval(() => fetchAll(true), 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [selectedSeasonId])
 
   return { data, loading, error, seasons, selectedSeasonId, setSelectedSeasonId }
