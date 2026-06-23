@@ -15,7 +15,7 @@ function pctColor(pct) {
 }
 
 function CircleTable({ circle, sessionDates }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
 
   const totalSessions = sessionDates.length
   const studentsWithCount = circle.students.map(s => ({
